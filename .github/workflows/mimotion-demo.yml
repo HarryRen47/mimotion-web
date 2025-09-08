@@ -1,0 +1,46 @@
+name: MiMotion Demo (Manual Test)
+
+on:
+  # 只支持手动触发，避免意外执行
+  workflow_dispatch:
+    inputs:
+      demo_mode:
+        description: 'Demo mode (safe test without real sync)'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  demo-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-action.txt
+        
+    - name: Run function tests
+      run: |
+        echo "Running GitHub Action implementation tests..."
+        python test_action.py
+        
+    - name: Demo configuration check
+      run: |
+        echo "Demo mode: ${{ inputs.demo_mode }}"
+        echo "This is a safe demo that doesn't perform actual sync operations."
+        echo "To use real sync, configure secrets in your repository and use the main workflow."
+        
+    - name: Display environment info
+      run: |
+        echo "Current time: $(date)"
+        echo "Beijing time: $(TZ='Asia/Shanghai' date)"
+        echo "GitHub Actions environment ready for MiMotion sync!"
