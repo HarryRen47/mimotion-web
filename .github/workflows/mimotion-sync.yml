@@ -1,0 +1,70 @@
+name: MiMotion Step Sync
+
+on:
+  # 定时运行 - 每小时的第5分钟执行
+  schedule:
+    - cron: '5 * * * *'
+  
+  # 支持手动触发
+  workflow_dispatch:
+    inputs:
+      force_sync:
+        description: '强制同步所有账号'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  sync-steps:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-action.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-action.txt
+        
+    - name: Display current time
+      run: |
+        echo "Current UTC time: $(date -u)"
+        echo "Current Beijing time: $(TZ='Asia/Shanghai' date)"
+        
+    - name: Run step sync
+      env:
+        # 配置方式1：使用JSON格式配置多个账号
+        # MI_ACCOUNTS_JSON: ${{ secrets.MI_ACCOUNTS_JSON }}
+        
+        # 配置方式2：使用单独的环境变量配置单个账号
+        MI_USER: ${{ secrets.MI_USER }}
+        MI_PASSWORD: ${{ secrets.MI_PASSWORD }}
+        MIN_STEP: ${{ secrets.MIN_STEP || '18000' }}
+        MAX_STEP: ${{ secrets.MAX_STEP || '25000' }}
+        SYNC_START_HOUR: ${{ secrets.SYNC_START_HOUR || '8' }}
+        SYNC_END_HOUR: ${{ secrets.SYNC_END_HOUR || '22' }}
+      run: |
+        python action_sync.py
+        
+    - name: Upload logs (on failure)
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: sync-logs-${{ github.run_number }}
+        path: |
+          *.log
+        retention-days: 7
